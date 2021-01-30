@@ -3,6 +3,8 @@ defmodule Egit do
   alias Egit.Blob
   alias Egit.Tree
   alias Egit.Entry
+  alias Egit.Commit
+  alias Egit.Author
   alias Egit.Workspace
   alias Egit.Database
   @moduledoc """
@@ -54,6 +56,16 @@ defmodule Egit do
         tree = Tree.new(entries)
         tree = Database.store(database, tree)
         IO.puts "tree: #{tree.oid}"
+
+        name = System.get_env("GIT_AUTHOR_NAME", "Edmondfrank")
+        email = System.get_env("GIT_AUTHOR_NAME", "edmomdfrank@yahoo.com")
+
+        author = Author.new(name, email, DateTime.utc_now)
+        message = IO.read(:stdio, :line)
+
+        commit = Commit.new(tree, author, message)
+        commit = Database.store(database, commit)
+        IO.puts "commit: #{commit.oid}"
       _ ->
         IO.puts(:stderr, "egit: '#{command}' is not a valid command")
         exit({:shutdown, -1})
