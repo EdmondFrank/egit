@@ -65,7 +65,15 @@ defmodule Egit do
 
         commit = Commit.new(tree, author, message)
         commit = Database.store(database, commit)
-        IO.puts "commit: #{commit.oid}"
+
+        git_path
+        |> Path.join("HEAD")
+        |> File.open([:write, :exclusive], fn file ->
+          IO.write(file, commit.oid)
+        end)
+
+        IO.puts "[(root-commit) #{ commit.oid}] #{message}"
+        exit(:normal)
       _ ->
         IO.puts(:stderr, "egit: '#{command}' is not a valid command")
         exit({:shutdown, -1})
