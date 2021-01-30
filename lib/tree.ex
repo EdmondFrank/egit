@@ -13,8 +13,8 @@ defmodule Egit.Tree do
     # Putting everything together, this generates a string for each entry consisting of the mode 100644 , a space, the filename, a null byte, and then twenty bytes for the object ID
 
     # hexdump -C tree
-    # 00000000  [74 72 65 65] 20 37 30 00  [31 30 30 36 34 34] [20] [65     |tree 70.100644 e|
-    #               tree                          100644      space
+    # 00000000  [74 72 65 65] [20] [37 30] 00  [31 30 30 36 34 34] [20] [65 |tree 70.100644 e|
+    #               tree      space   70              100644      space
     # 00000010  67 69 74 2e 65 78] 00 [c3 7f b3 82 1b 41 61 eb c6           |git.ex......Aa..|
     #                egit.ex
     # 00000020  fa 0c 94 86 3f bf 7a e6  97 60 17] [31 30 30 36 34          |....?.z..`.10064|

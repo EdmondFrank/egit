@@ -12,7 +12,7 @@ defmodule Egit.Database do
   def store(%Database{pathname: pathname}, object) do
     string = to_s(object)
     content = "#{object.type} #{byte_size(string)}\0#{string}"
-    oid = :crypto.hash(:sha, string) |> Base.encode16 |> String.downcase
+    oid = :crypto.hash(:sha, content) |> Base.encode16(case: :lower)
     object = %{ object | oid: oid }
     write_object(pathname, object.oid, content)
     object
@@ -28,11 +28,9 @@ defmodule Egit.Database do
     |> Path.join(String.slice(oid, 0..1))
     |> Path.join(String.slice(oid, 2..-1))
 
-    IO.puts object_path
     dirname = Path.dirname(object_path)
-    IO.puts dirname
     temp_path = Path.join(dirname, generate_temp_name())
-    IO.puts temp_path
+
     flags = [:read, :write, :exclusive]
     unless File.exists?(dirname) do
       File.mkdir_p(dirname)
