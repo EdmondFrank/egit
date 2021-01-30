@@ -1,5 +1,6 @@
 defmodule Egit.Database do
   alias Egit.Blob
+  alias Egit.Tree
   alias Egit.Database
   defstruct pathname: "."
 
@@ -8,12 +9,17 @@ defmodule Egit.Database do
   end
 
   def store(%Database{pathname: pathname}, object) do
-    string = Blob.to_s(object)
+    string = to_s(object)
     content = "#{object.type} #{byte_size(string)}\0#{string}"
     oid = :crypto.hash(:sha, string) |> Base.encode16 |> String.downcase
     object = %{ object | oid: oid }
     write_object(pathname, object.oid, content)
+    object
   end
+
+  defp to_s(%Blob{} = obj), do: Blob.to_s(obj)
+  defp to_s(%Tree{} = obj), do: Tree.to_s(obj)
+
 
   defp write_object(pathname, oid, content) do
     object_path = pathname

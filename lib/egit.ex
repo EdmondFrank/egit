@@ -1,6 +1,8 @@
 defmodule Egit do
 
   alias Egit.Blob
+  alias Egit.Tree
+  alias Egit.Entry
   alias Egit.Workspace
   alias Egit.Database
   @moduledoc """
@@ -39,12 +41,19 @@ defmodule Egit do
         workspace = Workspace.new(root_path)
         database = Database.new(db_path)
 
-        Workspace.list_files(workspace)
-        |> Enum.each(fn path ->
+        entries = Workspace.list_files(workspace)
+        |> Enum.map(fn path ->
           data = Workspace.read_file(workspace, path)
           blob = Blob.new(data)
-          Database.store(database, blob)
+
+          blob = Database.store(database, blob)
+
+          Entry.new(path, blob.oid)
         end)
+
+        tree = Tree.new(entries)
+        tree = Database.store(database, tree)
+        IO.puts "tree: #{tree.oid}"
       _ ->
         IO.puts(:stderr, "egit: '#{command}' is not a valid command")
         exit({:shutdown, -1})
