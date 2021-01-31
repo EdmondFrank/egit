@@ -1,5 +1,7 @@
 defmodule Egit.Refs do
   alias Egit.Refs
+  alias Egit.Lockfile
+  alias Egit.Error
   defstruct [pathname: "."]
 
   def new(pathname) do
@@ -7,11 +9,17 @@ defmodule Egit.Refs do
   end
 
   def update_head(%Refs{pathname: pathname}, oid) do
-    pathname
-    |> head_path
-    |> File.open([:write], fn file ->
-      IO.write(file, oid)
-    end)
+
+    lockfile = Lockfile.new(head_path(pathname))
+    lockfile = Lockfile.hold_for_update(lockfile)
+
+    unless lockfile.lock do
+      raise Error.LockDenied, "Could not acquire lock on file: #{head_path(pathname)}"
+    end
+
+    Lockfile.write(lockfile, oid)
+    Lockfile.write(lockfile, "\n")
+    Lockfile.commit(lockfile)
   end
 
   def read_head(%Refs{pathname: pathname}) do
