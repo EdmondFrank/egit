@@ -31,15 +31,17 @@ defmodule Egit.Database do
     dirname = Path.dirname(object_path)
     temp_path = Path.join(dirname, generate_temp_name())
 
-    flags = [:read, :write]
-    unless File.exists?(dirname) do
-      File.mkdir_p(dirname)
+    unless File.exists?(object_path) do
+      flags = [:read, :write]
+      unless File.exists?(dirname) do
+        File.mkdir_p(dirname)
+      end
+      {:ok, file} = File.open(temp_path, flags)
+      compressed = :zlib.compress(content)
+      IO.binwrite(file, compressed)
+      File.close(file)
+      File.rename(temp_path, object_path)
     end
-    {:ok, file} = File.open(temp_path, flags)
-    compressed = :zlib.compress(content)
-    IO.binwrite(file, compressed)
-    File.close(file)
-    File.rename(temp_path, object_path)
   end
 
   defp generate_temp_name() do
