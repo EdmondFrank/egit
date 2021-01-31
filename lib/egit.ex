@@ -52,7 +52,8 @@ defmodule Egit do
 
           blob = Database.store(database, blob)
 
-          Entry.new(path, blob.oid)
+          stat = Workspace.stat_file(workspace, path)
+          Entry.new(path, blob.oid, stat)
         end)
 
         tree = Tree.new(entries)

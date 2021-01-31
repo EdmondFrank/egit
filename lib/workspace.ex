@@ -14,6 +14,11 @@ defmodule Egit.Workspace do
     files -- @ignore
   end
 
+  def stat_file(%Workspace{pathname: pathname}, path) do
+    {:ok, stat} = File.stat Path.join(pathname, path)
+    stat
+  end
+
   def read_file(%Workspace{pathname: pathname}, path) do
     case File.read(Path.join(pathname, path)) do
       {:ok, content} ->

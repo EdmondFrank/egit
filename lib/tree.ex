@@ -1,7 +1,6 @@
 defmodule Egit.Tree do
 
   alias Egit.Tree
-  @mode "100644"
 
   defstruct [oid: nil, entries: [], type: "tree"]
 
@@ -26,7 +25,7 @@ defmodule Egit.Tree do
 
     entries_packed = Enum.sort_by(entries, &(&1.name))
     |> Enum.map(fn entry ->
-      "#{@mode} #{entry.name}\0#{entry.oid |> String.upcase |> Base.decode16!}"
+      "#{entry.mode} #{entry.name}\0#{entry.oid |> String.upcase |> Base.decode16!}"
     end)
 
     Enum.join(entries_packed, "")
