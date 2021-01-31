@@ -1,5 +1,6 @@
 defmodule Egit do
 
+  alias Egit.Refs
   alias Egit.Blob
   alias Egit.Tree
   alias Egit.Entry
@@ -42,6 +43,7 @@ defmodule Egit do
 
         workspace = Workspace.new(root_path)
         database = Database.new(db_path)
+        refs = Refs.new(git_path)
 
         entries = Workspace.list_files(workspace)
         |> Enum.map(fn path ->
@@ -57,22 +59,21 @@ defmodule Egit do
         tree = Database.store(database, tree)
         IO.puts "tree: #{tree.oid}"
 
+        parent = Refs.read_head(refs)
         name = System.get_env("GIT_AUTHOR_NAME", "Edmondfrank")
         email = System.get_env("GIT_AUTHOR_NAME", "edmomdfrank@yahoo.com")
 
         author = Author.new(name, email, DateTime.utc_now)
         message = IO.read(:stdio, :line)
 
-        commit = Commit.new(tree, author, message)
+        commit = Commit.new(parent, tree, author, message)
         commit = Database.store(database, commit)
 
-        git_path
-        |> Path.join("HEAD")
-        |> File.open([:write, :exclusive], fn file ->
-          IO.write(file, commit.oid)
-        end)
+        Refs.update_head(refs, commit.oid)
 
-        IO.puts "[(root-commit) #{ commit.oid}] #{message}"
+        is_root = if is_nil(parent), do: "(root-commit) ", else: ""
+
+        IO.puts "[#{is_root}#{ commit.oid}] #{message}"
         exit(:normal)
       _ ->
         IO.puts(:stderr, "egit: '#{command}' is not a valid command")

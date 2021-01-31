@@ -31,7 +31,7 @@ defmodule Egit.Database do
     dirname = Path.dirname(object_path)
     temp_path = Path.join(dirname, generate_temp_name())
 
-    flags = [:read, :write, :exclusive]
+    flags = [:read, :write]
     unless File.exists?(dirname) do
       File.mkdir_p(dirname)
     end
