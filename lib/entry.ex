@@ -6,8 +6,9 @@ defmodule Egit.Entry do
   2. filename
   3. mode of each file
   """
-  @regular_mode "100644"
-  @executable_mode "100755"
+  @regular_mode         "100644"
+  @executable_mode      "100755"
+  @directory_mode       "40000"
 
   alias Egit.Entry
 
@@ -31,5 +32,29 @@ defmodule Egit.Entry do
     else
       @regular_mode
     end
+  end
+
+  def to_s(%Entry{mode: mode, name: name, oid: oid}) do
+    "#{mode} #{name}\0#{oid |> String.upcase |> Base.decode16!}"
+  end
+
+
+  def basename(%Entry{name: name}) do
+    Path.basename(name)
+  end
+  def basename(path), do: Path.basename(path)
+
+  def parent_directories(%Entry{name: name}) do
+    name
+    |> String.split("/", trim: true)
+    |> Enum.reduce([], fn path, acc ->
+      [Path.join(to_string(List.first(acc)), path) | acc]
+    end)
+    |> Enum.reverse
+    |> Enum.slice(0..-2)
+  end
+
+  def tree_mode do
+    @directory_mode
   end
 end

@@ -56,9 +56,10 @@ defmodule Egit do
           Entry.new(path, blob.oid, stat)
         end)
 
-        tree = Tree.new(entries)
-        tree = Database.store(database, tree)
-        IO.puts "tree: #{tree.oid}"
+        root = Tree.build(entries)
+        root = Tree.traverse(root, fn tree -> Database.store(database, tree) end)
+
+        IO.puts "tree: #{root.oid}"
 
         parent = Refs.read_head(refs)
         name = System.get_env("GIT_AUTHOR_NAME", "Edmondfrank")
@@ -67,7 +68,7 @@ defmodule Egit do
         author = Author.new(name, email, DateTime.utc_now)
         message = IO.read(:stdio, :line)
 
-        commit = Commit.new(parent, tree, author, message)
+        commit = Commit.new(parent, root, author, message)
         commit = Database.store(database, commit)
 
         Refs.update_head(refs, commit.oid)

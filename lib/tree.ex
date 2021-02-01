@@ -1,14 +1,53 @@
 defmodule Egit.Tree do
 
   alias Egit.Tree
+  alias Egit.Entry
 
-  defstruct [oid: nil, entries: [], type: "tree"]
+  defstruct [oid: nil, entries: %{}, type: "tree", mode: Entry.tree_mode]
 
-  def new(entries) do
-    %Tree{entries: entries}
+  def new do
+    %Tree{}
   end
 
-  def to_s(%Tree{entries: entries}) do
+  def add_entry(%Tree{entries: entries} = tree, parents, entry) do
+    # IO.inspect([parents, entry])
+    if length(parents) == 0 do
+      %{ tree | entries: Map.put(entries, Entry.basename(entry), entry)}
+    else
+      [_ | tail] = parents
+      sub_tree = Map.get(entries, Entry.basename(List.first(parents)), Tree.new)
+      %{ tree | entries: Map.put(entries, Entry.basename(List.first(parents)), Tree.add_entry(sub_tree, tail, entry))}
+    end
+  end
+
+  def build(entries) do
+    root = Tree.new
+    Enum.sort_by(entries, &(&1.name))
+    |> Enum.reduce(root, fn entry, acc ->
+      DeepMerge.deep_merge(acc, Tree.add_entry(acc, Entry.parent_directories(entry), entry))
+    end)
+  end
+
+  def traverse(%Tree{entries: entries} = tree, block) do
+    updated = Enum.map(entries, fn {name, entry} ->
+      if is_struct(entry, Tree) do
+        %{ name => Tree.traverse(entry, block) }
+      end
+    end)
+    |> Enum.filter(&(not is_nil(&1)))
+    |> List.flatten
+
+    new_tree = if length(updated) > 0 do
+      Enum.reduce(updated, tree, fn update_entry, acc ->
+        put_in(acc.entries, Map.merge(acc.entries, update_entry))
+      end)
+    else
+      tree
+    end
+    block.(new_tree)
+  end
+
+  def to_s(%Tree{entries: entries}) when is_map(entries) do
     # Putting everything together, this generates a string for each entry consisting of the mode 100644 , a space, the filename, a null byte, and then twenty bytes for the object ID
 
     # hexdump -C tree
@@ -22,10 +61,9 @@ defmodule Egit.Tree do
     #               space        mix.exs
     # 00000040  46 fd 22 cf f8 9e ec b6  c4 76 a3 b6 1b 74]                 |F."......v...t|
     # 0000004e
-
-    entries_packed = Enum.sort_by(entries, &(&1.name))
-    |> Enum.map(fn entry ->
-      "#{entry.mode} #{entry.name}\0#{entry.oid |> String.upcase |> Base.decode16!}"
+    # IO.inspect(entries)
+    entries_packed = Enum.map(entries, fn {name, entry} ->
+      "#{entry.mode} #{name}\0#{entry.oid |> String.upcase |> Base.decode16!}"
     end)
 
     Enum.join(entries_packed, "")

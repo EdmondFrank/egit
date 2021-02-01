@@ -9,9 +9,19 @@ defmodule Egit.Workspace do
     %Workspace{pathname: Path.expand(pathname)}
   end
 
-  def list_files(%Workspace{pathname: pathname}) do
-    {:ok, files} = File.ls(pathname)
-    files -- @ignore
+  def list_files(%Workspace{pathname: pathname} = base, dir \\ nil) do
+    dir = if is_nil(dir) , do: pathname, else: dir
+    files = File.ls!(dir)
+    filenames = files -- @ignore
+    Enum.map(filenames, fn name ->
+      path = Path.join(dir, name)
+      if File.dir?(path) do
+        list_files(base, path)
+      else
+        Path.relative_to(path, pathname)
+      end
+    end)
+    |> List.flatten
   end
 
   def stat_file(%Workspace{pathname: pathname}, path) do
