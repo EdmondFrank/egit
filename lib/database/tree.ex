@@ -10,7 +10,6 @@ defmodule Egit.Tree do
   end
 
   def add_entry(%Tree{entries: entries} = tree, parents, entry) do
-    # IO.inspect([parents, entry])
     if length(parents) == 0 do
       %{ tree | entries: Map.put(entries, Entry.basename(entry), entry)}
     else
@@ -61,7 +60,6 @@ defmodule Egit.Tree do
     #               space        mix.exs
     # 00000040  46 fd 22 cf f8 9e ec b6  c4 76 a3 b6 1b 74]                 |F."......v...t|
     # 0000004e
-    # IO.inspect(entries)
     entries_packed = Enum.map(entries, fn {name, entry} ->
       "#{entry.mode} #{name}\0#{entry.oid |> String.upcase |> Base.decode16!}"
     end)

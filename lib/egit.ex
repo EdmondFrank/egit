@@ -6,6 +6,7 @@ defmodule Egit do
   alias Egit.Entry
   alias Egit.Commit
   alias Egit.Author
+  alias Egit.Index
   alias Egit.Workspace
   alias Egit.Database
   @moduledoc """
@@ -76,6 +77,25 @@ defmodule Egit do
         is_root = if is_nil(parent), do: "(root-commit) ", else: ""
 
         IO.puts "[#{is_root}#{ commit.oid}] #{message}"
+        exit(:normal)
+
+      "add" ->
+        root_path = Path.expand(".")
+        git_path = root_path |> Path.join(".git")
+
+        workspace = Workspace.new(root_path)
+        database = Database.new(Path.join(git_path, "objects"))
+        index = Index.new(Path.join(git_path, "index"))
+
+        path = Enum.at(args, 1) |> to_string
+        data = Workspace.read_file(workspace, path)
+        stat = Workspace.stat_file(workspace, path)
+
+        blob = Blob.new(data)
+        blob = Database.store(database, blob)
+        index = Index.add(index, path, blob, stat)
+        Index.write_updates(index)
+
         exit(:normal)
       _ ->
         IO.puts(:stderr, "egit: '#{command}' is not a valid command")

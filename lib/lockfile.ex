@@ -22,9 +22,9 @@ defmodule Egit.Lockfile do
     end
   end
 
-  def write(%Lockfile{lock: lock} = lockfile, string) do
+  def write(%Lockfile{lock: lock} = lockfile, string, binary? \\ false) do
     raise_on_stale_lock(lockfile)
-    IO.write(lock, string)
+    if binary?, do: IO.binwrite(lock, string), else: IO.write(lock, string)
   end
 
   def commit(%Lockfile{lock: lock, lock_path: lock_path, file_path: file_path} = lockfile) do

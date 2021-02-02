@@ -2,6 +2,7 @@ defmodule Egit.Database do
   alias Egit.Blob
   alias Egit.Tree
   alias Egit.Commit
+  alias Egit.Index
   alias Egit.Database
   defstruct pathname: "."
 
@@ -21,7 +22,7 @@ defmodule Egit.Database do
   defp to_s(%Blob{} = obj), do: Blob.to_s(obj)
   defp to_s(%Tree{} = obj), do: Tree.to_s(obj)
   defp to_s(%Commit{} = obj), do: Commit.to_s(obj)
-
+  defp to_s(%Index.Entry{} = obj), do: Index.Entry.to_s(obj)
 
   defp write_object(pathname, oid, content) do
     object_path = pathname
