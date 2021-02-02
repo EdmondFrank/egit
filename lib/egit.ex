@@ -90,12 +90,14 @@ defmodule Egit do
         # path = Enum.at(args, 1) |> to_string
         index  = Enum.slice(args, 1..-1)
         |> Enum.reduce(index, fn path, index ->
-          data = Workspace.read_file(workspace, path)
-          stat = Workspace.stat_file(workspace, path)
+          Enum.reduce(Workspace.list_files(workspace, path), index, fn sub_path, sub_index ->
+            data = Workspace.read_file(workspace, sub_path)
+            stat = Workspace.stat_file(workspace, sub_path)
 
-          blob = Blob.new(data)
-          blob = Database.store(database, blob)
-          Index.add(index, path, blob, stat)
+            blob = Blob.new(data)
+            blob = Database.store(database, blob)
+            Index.add(sub_index, sub_path, blob, stat)
+          end)
         end)
 
         Index.write_updates(index)

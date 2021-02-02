@@ -11,17 +11,13 @@ defmodule Egit.Workspace do
 
   def list_files(%Workspace{pathname: pathname} = base, dir \\ nil) do
     dir = if is_nil(dir) , do: pathname, else: dir
-    files = File.ls!(dir)
-    filenames = files -- @ignore
-    Enum.map(filenames, fn name ->
-      path = Path.join(dir, name)
-      if File.dir?(path) do
-        list_files(base, path)
-      else
-        Path.relative_to(path, pathname)
-      end
-    end)
-    |> List.flatten
+    if File.dir?(dir) do
+      File.ls!(dir) -- @ignore
+      |> Enum.map(&list_files(base, Path.join(dir, &1)))
+      |> List.flatten
+    else
+      [Path.relative_to(dir, pathname)]
+    end
   end
 
   def stat_file(%Workspace{pathname: pathname}, path) do
