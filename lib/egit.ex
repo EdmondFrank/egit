@@ -87,13 +87,17 @@ defmodule Egit do
         database = Database.new(Path.join(git_path, "objects"))
         index = Index.new(Path.join(git_path, "index"))
 
-        path = Enum.at(args, 1) |> to_string
-        data = Workspace.read_file(workspace, path)
-        stat = Workspace.stat_file(workspace, path)
+        # path = Enum.at(args, 1) |> to_string
+        index  = Enum.slice(args, 1..-1)
+        |> Enum.reduce(index, fn path, index ->
+          data = Workspace.read_file(workspace, path)
+          stat = Workspace.stat_file(workspace, path)
 
-        blob = Blob.new(data)
-        blob = Database.store(database, blob)
-        index = Index.add(index, path, blob, stat)
+          blob = Blob.new(data)
+          blob = Database.store(database, blob)
+          Index.add(index, path, blob, stat)
+        end)
+
         Index.write_updates(index)
 
         exit(:normal)
