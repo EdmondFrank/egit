@@ -26,6 +26,14 @@ defmodule Egit.Index.Entry do
     }
   end
 
+  def parse(binary_string) do
+    <<ctime::binary-size(4), ctime_nsec::binary-size(4),
+      ctime::binary-size(4), mtime_nsec::binary-size(4),
+      dev::binary-size(4), ino::binary-size(4), mode::binary-size(4),
+      uid::binary-size(4), gid::binary-size(4), size::binary-size(4),
+      oid::binary-size(20), flags::binary-size(2), path::binary>> =  binary_string
+  end
+
   def to_s(%Entry{} = e) do
     string = "#{i2hex(e.ctime)}#{i2hex(e.ctime_nsec)}"
     string = string <> "#{i2hex(e.mtime)}#{i2hex(e.mtime_nsec)}"

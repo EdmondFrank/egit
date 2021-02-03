@@ -14,4 +14,12 @@ defmodule Egit.Error do
   defmodule UnknownError do
     defexception message: "unknown errors occured"
   end
+
+  defmodule EndOfFile do
+    defexception message: "unexpected end-of-file while reading file"
+  end
+
+  defmodule Invalid do
+    defexception message: "gave an invalid result"
+  end
 end

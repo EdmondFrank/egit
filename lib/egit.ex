@@ -85,9 +85,11 @@ defmodule Egit do
 
         workspace = Workspace.new(root_path)
         database = Database.new(Path.join(git_path, "objects"))
+
         index = Index.new(Path.join(git_path, "index"))
 
-        # path = Enum.at(args, 1) |> to_string
+        index |> Index.load_for_update
+
         index  = Enum.slice(args, 1..-1)
         |> Enum.reduce(index, fn path, index ->
           Enum.reduce(Workspace.list_files(workspace, path), index, fn sub_path, sub_index ->
