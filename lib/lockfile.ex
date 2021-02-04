@@ -34,6 +34,12 @@ defmodule Egit.Lockfile do
     %{lockfile | lock: nil}
   end
 
+  def rollback(%Lockfile{lock: lock, lock_path: lock_path} = lockfile) do
+    raise_on_stale_lock(lockfile)
+    File.close(lock)
+    File.rm(lock_path)
+  end
+
   defp raise_on_stale_lock(%Lockfile{lock: lock, lock_path: lock_path}) do
     unless lock do
       raise "Not holding lock on file: #{lock_path}"

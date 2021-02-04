@@ -19,7 +19,7 @@ defmodule Egit.Index do
 
   def add(%Index{} = index, pathname, %{oid: oid}, stat) do
     entry = Entry.create(pathname, oid, stat)
-    %{index | entries: Map.put(index.entries, to_string(pathname), entry)}
+    %{index | entries: Map.put(index.entries, to_string(pathname), entry), changed: true}
   end
 
   def begin_write(%Index{} = index) do
@@ -33,27 +33,40 @@ defmodule Egit.Index do
   end
 
   def load(%Index{lockfile: lockfile} = index) do
-    new_index = reset(index)
     file = open_index_file(lockfile)
     if file do
       reader = Checksum.new(file)
       try do
-        count = read_header(reader)
-        |> IO.inspect(label: "decect the num of entries you have saved last time is")
-        # read_entries(reader, count)
-        # reader.verify_checksum
+        {:ok, reader, count} = read_header(reader)
+        count |> IO.inspect(label: "decect the num of entries you have saved last time is")
+        {:ok, save_index, reader} = read_entries(index, reader, count)
+        reader |> Checksum.finish |> Checksum.verify_checksum
+        save_index
       after
         File.close(file)
       end
-      new_index
     else
       index
     end
   end
 
-  defp read_header(%Checksum{} = init_checksum) do
-    %Checksum{data: data} = Checksum.read(init_checksum, @header_size)
+  defp read_entries(%Index{entries: entries} = index, %Checksum{} = reader, count) do
+    %{entries: load_entries, reader: new_reader} =
+      Enum.reduce(1..count, %{entries: entries, reader: reader}, fn _, res ->
+        %{reader: reader} = res
+        reader = Checksum.read(reader, @entry_min_size)
+        %Checksum{data: entry} = reader
+        {:ok, entry, reader} = padding_concat(entry, reader)
+        entry = Entry.parse(entry)
+        %{res | reader: reader, entries: Map.put(res.entries, entry.path, entry)}
+      end)
 
+   { :ok, %{index | entries: load_entries}, new_reader }
+  end
+
+  defp read_header(%Checksum{} = reader) do
+    checksum = Checksum.read(reader, @header_size)
+    %Checksum{data: data} = checksum
     <<signature::binary-size(4), version::binary-size(4), count::binary-size(4)>> = data
     unless signature == @signature do
       raise Error.Invalid, "Signature: expected '#{@signature}' but found '#{signature}'"
@@ -63,15 +76,17 @@ defmodule Egit.Index do
       raise Error.Invalid, "Version: expected '#{@version}' but found '#{hex2i(version)}'"
     end
 
-    hex2i(count)
+    {:ok, checksum, hex2i(count)}
   end
 
-  defp padding_concat(entry, checksum) do
+  defp padding_concat(entry, reader) do
     if String.last(entry) != "\0" do
-      entry = entry<>Checksum.read(checksum, @entry_block)
-      padding_concat(entry, checksum)
+      reader = Checksum.read(reader, @entry_block)
+      %{data: data} = reader
+      entry = entry<>data
+      padding_concat(entry, reader)
     else
-      entry
+      {:ok, entry, reader}
     end
   end
 
@@ -101,34 +116,34 @@ defmodule Egit.Index do
         {:error, "couldn't acquire the lock of #{lockfile.file_path}" }
       end
     after
-      Lockfile.commit(lockfile)
+      Lockfile.rollback(lockfile)
     end
   end
 
-  def write_updates(%Index{lockfile: lockfile, entries: entries} = index) do
-    lockfile = Lockfile.hold_for_update(lockfile)
-    if lockfile.lock do
-      index = %{index | lockfile: lockfile}
+  def write_updates(%Index{lockfile: lockfile, entries: entries, changed: changed} = index) do
+    if changed do
+      lockfile = Lockfile.hold_for_update(lockfile)
+      if lockfile.lock do
+        index = %{index | lockfile: lockfile}
 
-      pack = fn num -> String.pad_leading(<<num>>, 4, "\0") end
+        pack = fn num -> String.pad_leading(<<num>>, 4, "\0") end
 
-      index = begin_write(index)
+        index = begin_write(index)
 
-      header = "DIRC#{pack.(2)}#{pack.(length(Map.keys(entries)))}"
+        header = "DIRC#{pack.(2)}#{pack.(length(Map.keys(entries)))}"
 
-      index = write(index, header)
-      index = Enum.reduce(entries, index, fn {_key, entry}, index  ->
-        write(index, Entry.to_s(entry))
-      end)
+        index = write(index, header)
+        index = Enum.reduce(entries, index, fn {_key, entry}, index  ->
+          write(index, Entry.to_s(entry))
+        end)
 
-      {:ok, finish_write(index)}
+        {:ok, finish_write(index)}
+      else
+        {:error, "couldn't acquire the lock of #{lockfile.file_path}" }
+      end
     else
-      {:error, "couldn't acquire the lock of #{lockfile.file_path}" }
+      Lockfile.rollback(lockfile)
     end
-  end
-
-  defp reset(%Index{} = index) do
-    %{ index | entries: %{},  digest: nil, changed: false }
   end
 
   defp i2hex(int, bytes \\ @entry_block) do

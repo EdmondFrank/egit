@@ -27,11 +27,22 @@ defmodule Egit.Index.Entry do
   end
 
   def parse(binary_string) do
+    ## fixme: to parse ctime_nsec, mtime_nsec fields correctly
     <<ctime::binary-size(4), ctime_nsec::binary-size(4),
-      ctime::binary-size(4), mtime_nsec::binary-size(4),
+      mtime::binary-size(4), mtime_nsec::binary-size(4),
       dev::binary-size(4), ino::binary-size(4), mode::binary-size(4),
       uid::binary-size(4), gid::binary-size(4), size::binary-size(4),
       oid::binary-size(20), flags::binary-size(2), path::binary>> =  binary_string
+
+    t_parse = fn (hex_time) -> hex_time |> hex2i end
+
+    %Entry{
+      ctime: t_parse.(ctime), ctime_nsec: 0,
+      mtime: t_parse.(mtime), mtime_nsec: 0,
+      dev: hex2i(dev), ino: hex2i(ino), mode: hex2i(mode),
+      uid: hex2i(uid), gid: hex2i(gid), size: hex2i(size),
+      oid: unpack_oid(oid), flags: hex2i(flags), path: unpack_path(path)
+    }
   end
 
   def to_s(%Entry{} = e) do
@@ -50,10 +61,27 @@ defmodule Egit.Index.Entry do
     oid |> String.upcase |> Base.decode16!
   end
 
+  defp unpack_oid(hex) do
+    hex |> Base.encode16 |> String.downcase
+  end
+
+  defp unpack_path(padding_hex) do
+    padding_hex |> String.trim_trailing("\0")
+  end
+
+
   defp i2hex(int, bytes \\ @entry_block) do
     Integer.to_string(int, 16)
     |> String.pad_leading(bytes, "0")
     |> Base.decode16!
+  end
+
+  defp hex2i(binary_hex) do
+    clean_binary = binary_hex
+    |> Base.encode16
+    |> String.trim_leading("0")
+
+    if String.length(clean_binary) > 0, do: String.to_integer(clean_binary, 16), else: 0
   end
 
   defp convert_naive_time(time) do
@@ -64,6 +92,10 @@ defmodule Egit.Index.Entry do
 
   defp unix_time(time) do
     time |> convert_naive_time |> DateTime.to_unix
+  end
+
+  def time_unix(timestamp) do
+    timestamp |> DateTime.from_unix! |> NaiveDateTime.to_erl
   end
 
   defp nsec(time) do
