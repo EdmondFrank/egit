@@ -46,18 +46,20 @@ defmodule Egit do
         database = Database.new(db_path)
         refs = Refs.new(git_path)
 
-        entries = Workspace.list_files(workspace)
-        |> Enum.map(fn path ->
-          data = Workspace.read_file(workspace, path)
-          blob = Blob.new(data)
+        # entries = Workspace.list_files(workspace)
+        # |> Enum.map(fn path ->
+        #   data = Workspace.read_file(workspace, path)
+        #   blob = Blob.new(data)
 
-          blob = Database.store(database, blob)
+        #   blob = Database.store(database, blob)
 
-          stat = Workspace.stat_file(workspace, path)
-          Entry.new(path, blob.oid, stat)
-        end)
+        #   stat = Workspace.stat_file(workspace, path)
+        #   Entry.new(path, blob.oid, stat)
+        # end)
 
-        root = Tree.build(entries)
+        index = Index.new(Path.join(git_path, "index")) |> Index.load
+
+        root = Tree.build(index.entries)
         root = Tree.traverse(root, fn tree -> Database.store(database, tree) end)
 
         IO.puts "tree: #{root.oid}"

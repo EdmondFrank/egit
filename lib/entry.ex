@@ -17,7 +17,7 @@ defmodule Egit.Entry do
   def new(name, oid, stat) do
     %Entry{name: name, oid: oid, mode: get_mode(stat)}
   end
-  defp get_mode(%{mode: mode}) do
+  def get_mode(%{mode: mode}) do
     # 001 000 111 101 101(o)
     # 000 000 001 001 001(o)
     #                    &&&

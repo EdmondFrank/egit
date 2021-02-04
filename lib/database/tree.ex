@@ -2,7 +2,7 @@ defmodule Egit.Tree do
 
   alias Egit.Tree
   alias Egit.Entry
-
+  alias Egit.Index
   defstruct [oid: nil, entries: %{}, type: "tree", mode: Entry.tree_mode]
 
   def new do
@@ -21,10 +21,18 @@ defmodule Egit.Tree do
 
   def build(entries) do
     root = Tree.new
-    Enum.sort_by(entries, &(&1.name))
-    |> Enum.reduce(root, fn entry, acc ->
-      DeepMerge.deep_merge(acc, Tree.add_entry(acc, Entry.parent_directories(entry), entry))
+    entries
+    |> Enum.reduce(root, fn {_key, entry}, acc ->
+      e =  case entry do
+             %Index.Entry{} -> convert_index_entry_to_entry(entry)
+             _ -> entry
+           end
+      DeepMerge.deep_merge(acc, Tree.add_entry(acc, Entry.parent_directories(e), e))
     end)
+  end
+
+  def convert_index_entry_to_entry(%Index.Entry{path: name, oid: oid} = index_entry) do
+    %Entry{name: name, oid: oid, mode: Entry.get_mode(index_entry)}
   end
 
   def traverse(%Tree{entries: entries} = tree, block) do
