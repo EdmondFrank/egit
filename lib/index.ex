@@ -1,5 +1,6 @@
 defmodule Egit.Index do
   alias Egit.Index
+  alias Egit.Tree
   alias Egit.Index.Entry
   alias Egit.Index.Checksum
   alias Egit.Lockfile
@@ -19,7 +20,17 @@ defmodule Egit.Index do
 
   def add(%Index{} = index, pathname, %{oid: oid}, stat) do
     entry = Entry.create(pathname, oid, stat)
-    %{index | entries: Map.put(index.entries, to_string(pathname), entry), changed: true}
+    compact_index = discard_conflicts(index, entry)
+    %{index | entries: Map.put(compact_index.entries, to_string(pathname), entry), changed: true}
+  end
+
+  def discard_conflicts(%Index{} = index, entry) do
+    compact_entries = Tree.convert_index_entry_to_entry(entry)
+    |> Egit.Entry.parent_directories
+    |> Enum.reduce(index.entries, fn dirname, res ->
+      Map.delete(res, dirname)
+    end)
+    %{ index | entries: compact_entries }
   end
 
   def begin_write(%Index{} = index) do

@@ -15,5 +15,13 @@ defmodule IndexSpec do
       save_index = Index.add(index(), "alice.txt", %{oid: oid()}, stat())
       expect Map.keys(save_index.entries) |> to(eq ["alice.txt"])
     end
+
+    it "replaces a file with directory" do
+      save_index = Index.add(index(), "alice.txt", %{oid: oid()}, stat())
+      save_index = Index.add(save_index, "bob.txt", %{oid: oid()}, stat())
+
+      save_index = Index.add(save_index, "alice.txt/nested.txt", %{oid: oid()}, stat())
+      expect Map.keys(save_index.entries) |> to(eq ["alice.txt/nested.txt", "bob.txt"])
+    end
   end
 end
