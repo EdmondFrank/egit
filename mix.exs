@@ -8,6 +8,7 @@ defmodule Egit.MixProject do
       elixir: "~> 1.11",
       start_permanent: Mix.env() == :prod,
       escript: [main_module: Egit],
+      preferred_cli_env: [espec: :test],
       deps: deps()
     ]
   end
@@ -24,7 +25,9 @@ defmodule Egit.MixProject do
     [
       # {:dep_from_hexpm, "~> 0.3.0"},
       # {:dep_from_git, git: "https://github.com/elixir-lang/my_dep.git", tag: "0.1.0"}
-      {:deep_merge, "~> 1.0"}
+      {:deep_merge, "~> 1.0"},
+      {:espec, "~> 1.8.3", only: :test},
+      {:secure_random, "~> 0.5"}
     ]
   end
 end
