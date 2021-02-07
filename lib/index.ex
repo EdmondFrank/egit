@@ -164,6 +164,10 @@ defmodule Egit.Index do
     end
   end
 
+  def release_lock(%Index{lockfile: lockfile}) do
+    Lockfile.rollback(lockfile)
+  end
+
   def write_updates(%Index{lockfile: lockfile, entries: entries, changed: changed} = index) do
     if changed do
       lockfile = Lockfile.hold_for_update(lockfile)

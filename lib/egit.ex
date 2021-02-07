@@ -3,7 +3,6 @@ defmodule Egit do
   alias Egit.Refs
   alias Egit.Blob
   alias Egit.Tree
-  alias Egit.Entry
   alias Egit.Commit
   alias Egit.Author
   alias Egit.Index
@@ -42,7 +41,6 @@ defmodule Egit do
         git_path = root_path |> Path.join(".git")
         db_path = git_path |> Path.join("objects")
 
-        workspace = Workspace.new(root_path)
         database = Database.new(db_path)
         refs = Refs.new(git_path)
 
@@ -91,19 +89,30 @@ defmodule Egit do
         {:ok, index} = Index.new(Path.join(git_path, "index"))
         |> Index.load_for_update
 
-        index  = Enum.slice(args, 1..-1)
-        |> Enum.reduce(index, fn path, index ->
-          Enum.reduce(Workspace.list_files(workspace, path), index, fn sub_path, sub_index ->
-            data = Workspace.read_file(workspace, sub_path)
-            stat = Workspace.stat_file(workspace, sub_path)
+        try do
+          index  = Enum.slice(args, 1..-1)
+          |> Enum.reduce(index, fn path, index ->
+            Enum.reduce(Workspace.list_files(workspace, path), index, fn sub_path, sub_index ->
+              data = Workspace.read_file(workspace, sub_path)
+              stat = Workspace.stat_file(workspace, sub_path)
 
-            blob = Blob.new(data)
-            blob = Database.store(database, blob)
-            Index.add(sub_index, sub_path, blob, stat)
+              blob = Blob.new(data)
+              blob = Database.store(database, blob)
+              Index.add(sub_index, sub_path, blob, stat)
+            end)
           end)
-        end)
 
-        Index.write_updates(index)
+          Index.write_updates(index)
+        rescue
+          e in Error.MissingFile ->
+            IO.puts(:stderr, "fatal: #{e.message}")
+          Index.release_lock(index)
+          exit({:shutdown, 128})
+          e in Error.NoPermission ->
+            IO.puts(:stderr, "fatal: #{e.message}")
+          Index.release_lock(index)
+          exit({:shutdown, 128})
+        end
 
         exit(:normal)
       _ ->

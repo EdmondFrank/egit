@@ -19,6 +19,10 @@ defmodule Egit.Error do
     defexception message: "unexpected end-of-file while reading file"
   end
 
+  defmodule MissingFile do
+    defexception message: "no such file"
+  end
+
   defmodule Invalid do
     defexception message: "gave an invalid result"
   end

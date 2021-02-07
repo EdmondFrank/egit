@@ -1,5 +1,6 @@
 defmodule Egit.Workspace do
 
+  alias Egit.Error
   alias Egit.Workspace
   @ignore [".", "..", ".git"]
 
@@ -16,22 +17,30 @@ defmodule Egit.Workspace do
       |> Enum.map(&list_files(base, Path.join(dir, &1)))
       |> List.flatten
     else
-      [Path.relative_to(dir, pathname)]
+      relative = Path.relative_to(dir, pathname)
+      if File.exists?(relative) do
+        [relative]
+      else
+        raise Error.MissingFile, "pathspec '#{ relative }' did not match any files"
+      end
     end
   end
 
   def stat_file(%Workspace{pathname: pathname}, path) do
-    {:ok, stat} = File.stat Path.join(pathname, path)
-    stat
+    full_path = Path.join(pathname, path)
+    case  File.stat(full_path) do
+      {:ok, stat} -> stat
+      {:error, :enoent} -> raise Error.NoPermission, "stat('#{full_path}')"
+      {:error, reason} -> raise Error.UnknownError, "fatal: because of #{reason}"
+    end
   end
 
   def read_file(%Workspace{pathname: pathname}, path) do
-    case File.read(Path.join(pathname, path)) do
-      {:ok, content} ->
-        content
-      {:error, reason} ->
-        IO.puts(:stderr, "fatal #{reason}")
-        exit({:shutdown, -1})
+    full_path = Path.join(pathname, path)
+    case File.read(full_path) do
+      {:ok, content} -> content
+      {:error, :enoent} -> raise Error.NoPermission, "open('#{full_path}')"
+      {:error, reason} -> raise Error.UnknownError, "fatal: because of #{reason}"
     end
   end
 end
