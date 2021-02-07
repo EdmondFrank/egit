@@ -23,5 +23,15 @@ defmodule IndexSpec do
       save_index = Index.add(save_index, "alice.txt/nested.txt", %{oid: oid()}, stat())
       expect Map.keys(save_index.entries) |> to(eq ["alice.txt/nested.txt", "bob.txt"])
     end
+
+    it "recursively replaces a directory with a file" do
+      save_index = Index.add(index(), "alice.txt", %{oid: oid()}, stat())
+      save_index = Index.add(save_index, "nested/bob.txt", %{oid: oid()}, stat())
+      save_index = Index.add(save_index, "nested/inner/claire.txt", %{oid: oid()}, stat())
+
+      save_index = Index.add(save_index, "nested", %{oid: oid()}, stat())
+
+      expect Map.keys(save_index.entries) |> to(eq ["alice.txt", "nested"])
+    end
   end
 end

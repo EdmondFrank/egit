@@ -6,7 +6,7 @@ defmodule Egit.Index do
   alias Egit.Lockfile
   alias Egit.Error
 
-  defstruct [lockfile: nil, entries: %{}, digest: nil, changed: false]
+  defstruct [lockfile: nil, entries: %{}, parents: %{}, digest: nil, changed: false]
 
   @header_size      12
   @signature        "DIRC"
@@ -20,17 +20,50 @@ defmodule Egit.Index do
 
   def add(%Index{} = index, pathname, %{oid: oid}, stat) do
     entry = Entry.create(pathname, oid, stat)
-    compact_index = discard_conflicts(index, entry)
-    %{index | entries: Map.put(compact_index.entries, to_string(pathname), entry), changed: true}
+
+    parents = Tree.convert_index_entry_to_entry(entry)
+    |> Egit.Entry.parent_directories
+    |> Enum.reduce(index.parents, fn dirname, parent ->
+      Map.update(parent, dirname, MapSet.new([entry.path]), fn set -> MapSet.put(set, entry.path) end)
+    end)
+
+
+    update_index = index |> Map.put(:parents, parents)
+
+    update_index = get_discard_conflicts(update_index, entry)
+    |> Enum.reduce(update_index, fn conflict_path, acc_index ->
+      discard_conflict(acc_index, Map.get(acc_index.entries, conflict_path))
+    end)
+
+    update_index
+    |> Map.put(:entries, Map.put(update_index.entries, pathname, entry))
+    |> Map.put(:changed, true)
   end
 
-  def discard_conflicts(%Index{} = index, entry) do
-    compact_entries = Tree.convert_index_entry_to_entry(entry)
+  def get_discard_conflicts(%Index{entries: entries, parents: parents} = index, entry, results \\ []) do
+
+    # current file could not hava conflicts
+    results = if Map.get(entries, entry.path), do: [entry.path | results], else: results
+
+    # current file's parents could not hava conflicts
+    results = Tree.convert_index_entry_to_entry(entry)
     |> Egit.Entry.parent_directories
-    |> Enum.reduce(index.entries, fn dirname, res ->
-      Map.delete(res, dirname)
+    |> Enum.reduce(results, fn parent, res ->
+      if Map.get(entries, parent), do: [parent | res], else: res
     end)
-    %{ index | entries: compact_entries }
+
+    # get current file's conflicts parents's children
+    if Map.has_key?(parents, entry.path) do
+      Map.get(parents, entry.path) |> Enum.reduce(results, fn sub_dir, res ->
+        res ++ get_discard_conflicts(index, Map.get(entries, sub_dir))
+      end)
+    else
+      results
+    end
+  end
+
+  def discard_conflict(%Index{entries: entries} = index, entry) do
+    %{ index | entries:  Map.delete(entries, entry.path) }
   end
 
   def begin_write(%Index{} = index) do
