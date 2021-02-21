@@ -8,6 +8,7 @@ defmodule Egit do
   alias Egit.Index
   alias Egit.Workspace
   alias Egit.Database
+  alias Egit.Repository
   @moduledoc """
   Documentation for `Egit`.
   Egit is a simple git elixir implementation
@@ -37,32 +38,19 @@ defmodule Egit do
         end)
         IO.puts "Initialized empty egit repository in #{git_path}"
       "commit" ->
-        root_path = Path.expand(".")
-        git_path = root_path |> Path.join(".git")
-        db_path = git_path |> Path.join("objects")
 
-        database = Database.new(db_path)
-        refs = Refs.new(git_path)
+        repo = Path.expand(".")
+        |> Path.join(".git")
+        |> Repository.new
 
-        # entries = Workspace.list_files(workspace)
-        # |> Enum.map(fn path ->
-        #   data = Workspace.read_file(workspace, path)
-        #   blob = Blob.new(data)
-
-        #   blob = Database.store(database, blob)
-
-        #   stat = Workspace.stat_file(workspace, path)
-        #   Entry.new(path, blob.oid, stat)
-        # end)
-
-        index = Index.new(Path.join(git_path, "index")) |> Index.load
+        index = Index.load(repo.index)
 
         root = Tree.build(index.entries)
-        root = Tree.traverse(root, fn tree -> Database.store(database, tree) end)
+        root = Tree.traverse(root, fn tree -> Database.store(repo.database, tree) end)
 
         IO.puts "tree: #{root.oid}"
 
-        parent = Refs.read_head(refs)
+        parent = Refs.read_head(repo.refs)
         name = System.get_env("GIT_AUTHOR_NAME", "Edmondfrank")
         email = System.get_env("GIT_AUTHOR_NAME", "edmomdfrank@yahoo.com")
 
@@ -70,9 +58,9 @@ defmodule Egit do
         message = IO.read(:stdio, :line)
 
         commit = Commit.new(parent, root, author, message)
-        commit = Database.store(database, commit)
+        commit = Database.store(repo.database, commit)
 
-        Refs.update_head(refs, commit.oid)
+        Refs.update_head(repo.refs, commit.oid)
 
         is_root = if is_nil(parent), do: "(root-commit) ", else: ""
 
@@ -80,24 +68,21 @@ defmodule Egit do
         exit(:normal)
 
       "add" ->
-        root_path = Path.expand(".")
-        git_path = root_path |> Path.join(".git")
+        repo = Path.expand(".")
+        |> Path.join(".git")
+        |> Repository.new |> IO.inspect(label: "current_repo:")
 
-        workspace = Workspace.new(root_path)
-        database = Database.new(Path.join(git_path, "objects"))
-
-        {:ok, index} = Index.new(Path.join(git_path, "index"))
-        |> Index.load_for_update
+        {:ok, index} = Index.load_for_update(repo.index)
 
         try do
           index  = Enum.slice(args, 1..-1)
           |> Enum.reduce(index, fn path, index ->
-            Enum.reduce(Workspace.list_files(workspace, path), index, fn sub_path, sub_index ->
-              data = Workspace.read_file(workspace, sub_path)
-              stat = Workspace.stat_file(workspace, sub_path)
+            Enum.reduce(Workspace.list_files(repo.workspace, path), index, fn sub_path, sub_index ->
+              data = Workspace.read_file(repo.workspace, sub_path)
+              stat = Workspace.stat_file(repo.workspace, sub_path)
 
               blob = Blob.new(data)
-              blob = Database.store(database, blob)
+              blob = Database.store(repo.database, blob)
               Index.add(sub_index, sub_path, blob, stat)
             end)
           end)
