@@ -2,11 +2,13 @@ defmodule Egit.Command do
   alias Egit.Command.Init
   alias Egit.Command.Add
   alias Egit.Command.Commit
+  alias Egit.Command.Status
 
   @commands %{
     "init" => Init,
     "add" => Add,
-    "commit" => Commit
+    "commit" => Commit,
+    "status" => Status
   }
 
   def execute(name, args) do
