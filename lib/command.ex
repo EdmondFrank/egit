@@ -16,7 +16,7 @@ defmodule Egit.Command do
       @commands[name].run(args)
     else
       IO.puts(:stderr, "egit: '#{name}' is not a valid command")
-      exit({:shutdown, -1})
+      exit(:normal)
     end
   end
 end

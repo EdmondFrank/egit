@@ -27,7 +27,8 @@ defmodule Egit.MixProject do
       # {:dep_from_git, git: "https://github.com/elixir-lang/my_dep.git", tag: "0.1.0"}
       {:deep_merge, "~> 1.0"},
       {:espec, "~> 1.8.3", only: :test},
-      {:secure_random, "~> 0.5"}
+      {:secure_random, "~> 0.5"},
+      {:dialyxir, "~> 1.0", only: [:dev], runtime: false}
     ]
   end
 end
