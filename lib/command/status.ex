@@ -6,7 +6,7 @@ defmodule Egit.Command.Status do
 
   def run(path) do
     repo =
-      Path.expand(path)
+      Path.expand(".")
       |> Path.join(".git")
       |> Repository.new()
 
