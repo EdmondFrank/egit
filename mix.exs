@@ -28,6 +28,7 @@ defmodule Egit.MixProject do
       {:deep_merge, "~> 1.0"},
       {:espec, "~> 1.8.3", only: :test},
       {:secure_random, "~> 0.5"},
+      {:sorted_set_nif, "~> 1.2"},
       {:dialyxir, "~> 1.0", only: [:dev], runtime: false}
     ]
   end
